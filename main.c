@@ -156,7 +156,6 @@ int* dijkstra(Node* curr, Node* end, int n, int m, int *len) {
 			}
 		}
 		curr = heap[0];
-		//showHeap(heap, heap_size);
 		heap = heap_pop(heap, &heap_size);
 		if (heap == NULL)
 			return NULL;
@@ -234,14 +233,14 @@ int *zachran_princezne(char **mapa, int n, int m, int t, int *dlzka_cesty) {
 		}
 	}
 	p_count--;
-
+	
 	//Gets neighbours for all nodes ignoring N tiles
 	for (int i = 0; i < n*m; i++)
 		graph[i] = getNeighbours(graph[i], graph, n, m);
 	
 	//Finds dragon
 	int len;
-	int *path;
+	int *path = (int*)calloc(10000,sizeof(int));
 	path = dijkstra(graph[0], graph[goals[0]], n, m, &len);
 	graph = clear(graph, n*m);
 	
@@ -253,8 +252,7 @@ int *zachran_princezne(char **mapa, int n, int m, int t, int *dlzka_cesty) {
 		pPaths[i] = (int**)calloc(1 + p_count, sizeof(int*));
 		pLens[i] = (int*)calloc(1 + p_count, sizeof(int));
 	}
-	
-	//Finding the paths
+	//Finding the paths	
 	for (int i = 0; i < p_count + 1; i++) {
 		for (int j = 0; j < p_count + 1; j++) {
 			if (i == j) {
@@ -262,10 +260,13 @@ int *zachran_princezne(char **mapa, int n, int m, int t, int *dlzka_cesty) {
 				continue;
 			}
 			pPaths[i][j] = dijkstra(graph[goals[i]], graph[goals[j]], n, m, &pLens[i][j]);
+			if (pPaths[i][j] == NULL)
+				return NULL;
 			graph = clear(graph, n*m);
 		}
 	}
-
+	printf("%d %d DEBUG\n", pLens[0][1], pLens[1][0]);
+	
 	//Find an acceptable path
 	int** dummy_pLens = (int**)calloc(1 + p_count, sizeof(int*));
 	for (int i = 0; i < 1 + p_count; i++) {
@@ -274,21 +275,29 @@ int *zachran_princezne(char **mapa, int n, int m, int t, int *dlzka_cesty) {
 			dummy_pLens[i][j] = pLens[i][j];
 		}
 	}
-	int *perm = getPerm(dummy_pLens, p_count, 0);
 	
-	for (int i = 0; i < 2 * len; i += 2) {
-		printf("%d %d\n", path[i], path[i + 1]);
+	int *perm = getPerm(dummy_pLens, p_count, 0);
+	int counter = 0, finalLen = 0;
+	finalLen += len;
+	for (int i = 0; i < p_count; i++)
+		finalLen += pLens[perm[i]][perm[i + 1]];
+	
+	int* finalPath = (int*)calloc(finalLen * 2, sizeof(int));
+	
+	for (int i = 0; i < 2 * len; i++) {
+		finalPath[counter++] = path[i];
 	}
+
+	
 	for (int i = 0; i < p_count; i++) {
-		for (int j = 2; j < pLens[perm[i]][perm[i + 1]] * 2; j += 2) {
-			printf("%d %d\n", pPaths[perm[i]][perm[i + 1]][j], pPaths[perm[i]][perm[i + 1]][j + 1]);
+		for (int j = 2; j < pLens[perm[i]][perm[i + 1]] * 2; j++) {
+			finalPath[counter++] = pPaths[perm[i]][perm[i + 1]][j];
 		}	
 	}
-	
+	*dlzka_cesty = counter / 2;
 	//Free pPaths
-	
-	for (int i = 0; i < 1 + p_count; i++) {
-		for (int j = 0; j < 1 + p_count; j++) {
+	for (int i = 0; i <  p_count; i++) {
+		for (int j = 0; j <  p_count; j++) {
 			free(pPaths[i][j]);
 		}
 		free(pPaths[i]);
@@ -300,14 +309,21 @@ int *zachran_princezne(char **mapa, int n, int m, int t, int *dlzka_cesty) {
 		free(pLens[i]);
 	}
 	free(pLens);
+	for (int i = 0; i < 1 + p_count; i++) {
+		free(dummy_pLens[i]);
+	}
+	free(dummy_pLens);
 	//Free the rest
-	for (int i = 0; i < n*m; i++)
+	
+	for (int i = 2; i < n*m; i++) {
 		free(graph[i]);
+	}
 	free(graph);
 	free(goals);
-
-	return NULL;
+	
+	return finalPath;
 }
+
 
 int main()
 {
@@ -324,7 +340,7 @@ int main()
 		case 0://ukonci program
 			return 0;
 		case 1://nacitanie mapy zo suboru
-			f = fopen("C:\\Users\\user\\source\\repos\\Popolvar\\text2.txt", "r");
+			f = fopen("C:\\Users\\user\\source\\repos\\Popolvar\\text3.txt", "r");
 			if (f)
 				fscanf(f, "%d %d %d", &n, &m, &t);
 			else
